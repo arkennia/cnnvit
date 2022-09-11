@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cnndiffusion"
+version = "0.0.1-alpha"
+authors = [ { name = "Jonathan Manly", email = "jmanly784@gmail.com"} ]
+description = "A Tensorflow model inspired by CompVis/StableDiffusion"
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.7"
+dependencies=[
+        "tensorflow",
+        "tensorflow-addons",
+]
+
+[project-urls]
+"Source" = "https://github.com/jmanly56/cnndiffusion"
