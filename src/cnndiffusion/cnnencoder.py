@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 from tensorflow import keras
 from typing import List
 from keras import layers
@@ -119,7 +120,7 @@ class ConvNet(keras.Model):
 
 class Model(keras.Model):
     def __init__(self, embed_dim: int, filters: int, kernel_sizes: List[int],
-                 cnn_dropout: float, image_resolution: int,
+                 cnn_dropout: float, vocab_size: int, image_resolution: int,
                  vision_layers: int, vision_width: int,
                  vision_patch_size: int):
         super.__init__(self, Model)
@@ -132,3 +133,34 @@ class Model(keras.Model):
             heads=vision_heads,
             output_dim=embed_dim
         )
+        self.convnet = ConvNet(filters, kernel_sizes, cnn_dropout)
+        self.vocab_size = vocab_size
+        self.token_embedding = layers.Embedding(vocab_size, embed_dim)
+        self.ln_final = layers.LayerNormalization(epsilon=1e-5)
+        self.text_projection = tf.Variable(tf.random.normal([filters, embed_dim], stddev= filters ** -0.5))
+        self.logit_scale = tf.Variable(tf.ones([]) * np.log(1 / 0.07))
+    
+    def encode_text(self, text):
+        x = self.token_embedding(text)
+        x = self.convnet(x)
+        x = self.ln_final(x)
+        x = x[tf.range(x.shape[0]), tf.argmax(text, axis=-1)] @ self.text_projection
+        return x
+
+    def encode_image(self, image):
+        return self.visual(image)
+    
+    def call(self, image, text):
+        image_features = self.encode_image(image)
+        text_features = self.encode_text(text)
+        
+        image_features = image_features / tf.norm(image_features, dim=1, keepdims=True)
+        text_features = text_features / tf.norm(text_features, dim=1, keepdims=True)
+
+        logit_scale = tf.exp(self.logit_scale)
+
+        logits_per_image = logit_scale * image_features @ tf.transpose(text_features)
+        logits_per_text = tf.transpose(logits_per_image)
+
+        return logits_per_image, logits_per_text
+
